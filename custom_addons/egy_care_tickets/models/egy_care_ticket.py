@@ -1,0 +1,483 @@
+# -*- coding: utf-8 -*-
+# Egy Care Tickets - the Ticket model (Screen 1: Create Ticket).
+#
+# Implements everything visible on the PDF mock-up:
+#   Card No*, Beneficiary Name*, Company, Ticket Source*, Ticket Type*,
+#   Fax No, Phone / WhatsApp, Email, Attachments* (max 15), Email CC (max 10),
+#   Assign To, Auto Assign, VIP Ticket, Ticket Description*.
+#
+# Plus the state machine foundation needed by the next 8 screens
+# (New -> In Progress -> On Hold -> Resolved -> Closed / Cancelled).
+import re
+from datetime import timedelta
+
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError, ValidationError
+from odoo.tools import email_normalize
+
+TICKET_STATES = [
+    ('draft', 'New'),
+    ('in_progress', 'In Progress'),
+    ('on_hold', 'On Hold'),
+    ('resolved', 'Resolved'),
+    ('closed', 'Closed'),
+    ('cancelled', 'Cancelled'),
+]
+
+
+class EgyCareTicket(models.Model):
+    _name = 'egy.care.ticket'
+    _description = 'Egy Care Ticket'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _order = 'id desc'
+    _rec_names_search = ['ticket_no']
+
+    # ------------------------------------------------------------------
+    # Fields (order follows the PDF mock-up)
+    # ------------------------------------------------------------------
+    ticket_no = fields.Char(
+        string='Ticket No',
+        required=True,
+        copy=False,
+        readonly=True,
+        index=True,
+        help='Unique ticket reference, generated automatically '
+             '(EC/2026/00001, ...).')
+
+    # "Card No *" on the mock-up: a many2one to the beneficiary registry,
+    # searchable by card number or beneficiary name.
+    beneficiary_id = fields.Many2one(
+        'egy.care.beneficiary',
+        string='Card No',
+        required=True,
+        index=True,
+        ondelete='restrict',
+        tracking=True,
+        help='Select the beneficiary by card number or name. The name, '
+             'company and contact details are filled automatically.')
+    beneficiary_name = fields.Char(
+        related='beneficiary_id.name', string='Beneficiary Name')
+    company_name = fields.Char(
+        related='beneficiary_id.company_name', string='Company')
+
+    source_id = fields.Many2one(
+        'egy.care.ticket.source',
+        string='Ticket Source',
+        required=True,
+        index=True,
+        tracking=True,
+        default=lambda self: self.env.ref(
+            'egy_care_tickets.source_email', raise_if_not_found=False))
+    type_id = fields.Many2one(
+        'egy.care.ticket.type',
+        string='Ticket Type',
+        required=True,
+        index=True,
+        tracking=True)
+
+    # Contact details: auto-filled from the beneficiary, but editable on the
+    # ticket (the customer may call from a different number/email).
+    fax_no = fields.Char(string='Fax No')
+    phone_whatsapp = fields.Char(string='Phone / WhatsApp')
+    email = fields.Char(string='Email')
+    email_cc = fields.Char(
+        string='Email CC',
+        help='Comma-separated email addresses. Maximum 10 addresses.')
+
+    attachment_ids = fields.Many2many(
+        'ir.attachment',
+        string='Attachments',
+        copy=False,
+        help='Ticket attachments. Between 1 and 15 files.')
+
+    user_id = fields.Many2one(
+        'res.users',
+        string='Assign To',
+        domain=[('is_egy_agent', '=', True)],
+        index=True,
+        tracking=True,
+        copy=False,
+        help='Agent responsible for this ticket.')
+    auto_assign = fields.Boolean(
+        string='Auto Assign',
+        default=True,
+        help='Automatically assign this ticket to an agent using the '
+             'round-robin algorithm.')
+    vip_ticket = fields.Boolean(
+        string='VIP Ticket',
+        tracking=True,
+        copy=False,
+        help='Pre-filled from the beneficiary VIP flag. VIP tickets get '
+             'high priority automatically.')
+
+    priority = fields.Selection(
+        [('0', 'Normal'), ('1', 'High')],
+        string='Priority',
+        default='0',
+        index=True,
+        tracking=True)
+
+    description = fields.Text(string='Ticket Description', required=True)
+
+    state = fields.Selection(
+        TICKET_STATES,
+        string='Status',
+        required=True,
+        default='draft',
+        index=True,
+        tracking=True,
+        copy=False)
+
+    assigned_on = fields.Datetime(
+        string='Assigned On', copy=False, readonly=True)
+    closed_on = fields.Datetime(string='Closed On', copy=False, readonly=True)
+    active = fields.Boolean(string='Active', default=True)
+
+    # ------------------------------------------------------------------
+    # Ticket Details screen (UI phase - fields displayed on the mock-up)
+    # ------------------------------------------------------------------
+    approval_no = fields.Char(
+        string='Approval Number',
+        copy=False,
+        help='Approval reference generated by the approval workflow '
+             '(planned for the logic phase).')
+    sender_from = fields.Char(
+        string='From',
+        help='Sender identity as received from the channel '
+             '(e.g. Sender A, mobile app user, ...).')
+    received_at = fields.Datetime(
+        string='Received At',
+        default=lambda self: fields.Datetime.now(),
+        help='Date and time at which the ticket entered the queue.')
+    due_date = fields.Datetime(
+        string='Due Date',
+        help='Deadline for resolving the ticket. Pre-filled from the '
+             'agreed SLA (received time + agreed SLA minutes).')
+    ticket_aging = fields.Char(
+        string='Ticket Aging',
+        compute='_compute_ticket_aging',
+        help='Time elapsed since reception, as Days:Hours:Minutes:Seconds.')
+    beneficiary_ticket_ids = fields.One2many(
+        'egy.care.ticket',
+        compute='_compute_beneficiary_ticket_ids',
+        string='Beneficiary Ticket History',
+        help='All the other tickets of the same beneficiary.')
+
+    # ------------------------------------------------------------------
+    # Queue / Dashboard columns (UI phase)
+    # ------------------------------------------------------------------
+    queue_status = fields.Selection(
+        [('waiting', 'Waiting'),
+         ('pending', 'Pending'),
+         ('in_progress', 'In Progress')],
+        string='Queue Status',
+        default='pending',
+        index=True,
+        required=True,
+        help='Fine-grained queue status displayed on My Queue and the '
+             'Dashboard (Waiting / Pending / In Progress). It will be '
+             'computed automatically from the workflow in the logic phase.')
+    current_sla = fields.Integer(
+        string='Current SLA',
+        help='Elapsed SLA time in minutes (computed automatically in the '
+             'logic phase).')
+    agreed_sla = fields.Integer(
+        string='Agreed SLA',
+        default=120,
+        help='Contractually agreed resolution time in minutes.')
+    current_ola = fields.Integer(
+        string='Current OLA',
+        help='Elapsed OLA time in minutes (computed automatically in the '
+             'logic phase).')
+    agreed_ola = fields.Integer(
+        string='Agreed OLA',
+        default=15,
+        help='Internal (operational level) target time in minutes.')
+    card_no = fields.Char(
+        related='beneficiary_id.card_no', string='Card Number')
+    type_category = fields.Selection(
+        related='type_id.category', string='Type Category')
+
+    _ticket_no_unique = models.Constraint(
+        'UNIQUE(ticket_no)',
+        'The Ticket No must be unique!',
+    )
+
+    # ------------------------------------------------------------------
+    # Overrides
+    # ------------------------------------------------------------------
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            beneficiary = self.env['egy.care.beneficiary'].browse(
+                vals['beneficiary_id']) if vals.get('beneficiary_id') \
+                else self.env['egy.care.beneficiary']
+            # VIP defaults come from the beneficiary, but an explicit value
+            # sent by the UI (manual override) always wins.
+            vals.setdefault('vip_ticket', bool(beneficiary.is_vip))
+            vip = vals.get('vip_ticket') or beneficiary.is_vip
+            vals.setdefault('priority', '1' if vip else '0')
+        tickets = super().create(vals_list)
+        for ticket in tickets:
+            if not ticket.ticket_no:
+                ticket.ticket_no = self.env['ir.sequence'].sudo(
+                ).next_by_code('egy.care.ticket') or _('New')
+            if ticket.auto_assign and not ticket.user_id:
+                ticket._action_auto_assign()
+            elif ticket.user_id and not ticket.assigned_on:
+                ticket.assigned_on = fields.Datetime.now()
+            if ticket.state == 'closed' and not ticket.closed_on:
+                ticket.closed_on = fields.Datetime.now()
+        return tickets
+
+    def write(self, vals):
+        # Keep the assignment bookkeeping coherent whatever the write path
+        # (form save, server action, import, API call...).
+        if vals.get('user_id'):
+            vals['assigned_on'] = fields.Datetime.now()
+            self.env['res.users'].browse(
+                vals['user_id']).egy_ticket_last_assigned_on = \
+                fields.Datetime.now()
+        res = super().write(vals)
+        for ticket in self:
+            if vals.get('vip_ticket') and ticket.priority == '0':
+                ticket.priority = '1'
+            if vals.get('state') == 'closed' and not ticket.closed_on:
+                ticket.closed_on = fields.Datetime.now()
+        return res
+
+    def unlink(self):
+        if any(t.state not in ('draft', 'cancelled') for t in self):
+            raise UserError(_(
+                'Only new or cancelled tickets can be deleted. '
+                'Cancel or close the ticket instead.'))
+        return super().unlink()
+
+    # ------------------------------------------------------------------
+    # Constraints
+    # ------------------------------------------------------------------
+    @api.constrains('attachment_ids')
+    def _check_attachments(self):
+        params = self.env['ir.config_parameter'].sudo()
+        # Odoo 20: get_param() was removed - use the typed get_int() helper.
+        max_att = params.get_int('egy_care.max_attachments', 15)
+        min_att = params.get_int('egy_care.min_attachments', 1)
+        for ticket in self:
+            count = len(ticket.attachment_ids)
+            if count < min_att:
+                raise ValidationError(_(
+                    'At least %s attachment(s) are required for ticket %s.',
+                    min_att, ticket.ticket_no or _('(new)')))
+            if count > max_att:
+                raise ValidationError(_(
+                    'Ticket %s has too many attachments (%s). '
+                    'The maximum is %s.',
+                    ticket.ticket_no or _('(new)'), count, max_att))
+
+    @api.constrains('email', 'email_cc')
+    def _check_emails(self):
+        params = self.env['ir.config_parameter'].sudo()
+        max_cc = params.get_int('egy_care.max_email_cc', 10)
+        for ticket in self:
+            if ticket.email and not email_normalize(ticket.email):
+                raise ValidationError(_(
+                    'Invalid email address: %s', ticket.email))
+            if ticket.email_cc:
+                emails = [e for e in (
+                    s.strip() for s in re.split(r'[,;\n]+', ticket.email_cc)
+                ) if e]
+                if len(emails) > max_cc:
+                    raise ValidationError(_(
+                        'Email CC accepts a maximum of %s addresses.',
+                        max_cc))
+                invalid = [e for e in emails if not email_normalize(e)]
+                if invalid:
+                    raise ValidationError(_(
+                        'Invalid CC email address(es): %s',
+                        ', '.join(invalid)))
+
+    # ------------------------------------------------------------------
+    # Onchanges (Create Ticket UX)
+    # ------------------------------------------------------------------
+    @api.onchange('beneficiary_id')
+    def _onchange_beneficiary_id(self):
+        """Auto-fill the contact block from the beneficiary registry,
+        exactly like the PDF mock-up expects."""
+        if self.beneficiary_id:
+            self.phone_whatsapp = self.beneficiary_id.phone
+            self.email = self.beneficiary_id.email
+            self.fax_no = self.beneficiary_id.fax
+            self.vip_ticket = self.beneficiary_id.is_vip
+            if self.vip_ticket:
+                self.priority = '1'
+
+    @api.onchange('vip_ticket')
+    def _onchange_vip_ticket(self):
+        if self.vip_ticket and self.priority == '0':
+            self.priority = '1'
+
+    # ------------------------------------------------------------------
+    # Auto assignment (round-robin)
+    # ------------------------------------------------------------------
+    def _action_auto_assign(self):
+        self.ensure_one()
+        agent = self.env['res.users']._egy_care_get_next_agent()
+        if not agent:
+            self.message_post(body=_(
+                'Auto-assign skipped: no active agent found in the '
+                'Egy Care Agents group.'))
+            return False
+        self.write({'user_id': agent.id})
+        self.message_post(body=_(
+            'Ticket auto-assigned to %s (round-robin).', agent.name))
+        return True
+
+    # ------------------------------------------------------------------
+    # State machine (foundation for the Manage Tickets screen)
+    # ------------------------------------------------------------------
+    def _require_states(self, allowed, action_label):
+        wrong = self.filtered(lambda t: t.state not in allowed)
+        if wrong:
+            raise UserError(_(
+                'Cannot %(action)s: ticket(s) %(tickets)s are not in the '
+                'required status.',
+                action=action_label,
+                tickets=', '.join(wrong.mapped('ticket_no'))))
+
+    def action_start(self):
+        self._require_states({'draft'}, 'start')
+        self.write({'state': 'in_progress'})
+
+    def action_hold(self):
+        self._require_states({'in_progress'}, 'put on hold')
+        self.write({'state': 'on_hold'})
+
+    def action_resolve(self):
+        self._require_states({'in_progress', 'on_hold'}, 'resolve')
+        self.write({'state': 'resolved'})
+
+    def action_close(self):
+        self._require_states({'resolved'}, 'close')
+        self.write({'state': 'closed'})
+
+    def action_cancel(self):
+        self._require_states(
+            {'draft', 'in_progress', 'on_hold', 'resolved'}, 'cancel')
+        self.write({'state': 'cancelled'})
+
+    def action_reopen(self):
+        self._require_states(
+            {'closed', 'resolved', 'cancelled'}, 'reopen')
+        self.write({'state': 'in_progress', 'closed_on': False})
+
+    def action_reset_draft(self):
+        self.write({'state': 'draft', 'closed_on': False})
+
+    # ------------------------------------------------------------------
+    # Computes (Ticket Details screen)
+    # ------------------------------------------------------------------
+    @api.depends('received_at')
+    def _compute_ticket_aging(self):
+        now = fields.Datetime.now()
+        for ticket in self:
+            if not ticket.received_at:
+                ticket.ticket_aging = '0:0:0:0'
+                continue
+            elapsed = max(int((now - ticket.received_at).total_seconds()), 0)
+            days, remainder = divmod(elapsed, 86400)
+            hours, remainder = divmod(remainder, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            ticket.ticket_aging = '%d:%d:%d:%d' % (
+                days, hours, minutes, seconds)
+
+    def _compute_beneficiary_ticket_ids(self):
+        for ticket in self:
+            if ticket.beneficiary_id:
+                origin_id = ticket._origin.id or 0
+                ticket.beneficiary_ticket_ids = self.search([
+                    ('beneficiary_id', '=', ticket.beneficiary_id.id),
+                    ('id', '!=', origin_id),
+                ])
+            else:
+                ticket.beneficiary_ticket_ids = self.browse()
+
+    @api.onchange('received_at', 'agreed_sla')
+    def _onchange_due_date(self):
+        """Due Date = Received At + Agreed SLA (design: 02:08 PM -> 04:08 PM
+        for a 120 min SLA)."""
+        if self.received_at and self.agreed_sla and not self.due_date:
+            self.due_date = self.received_at + timedelta(
+                minutes=self.agreed_sla)
+
+    # ------------------------------------------------------------------
+    # Ticket Details screen buttons
+    # ------------------------------------------------------------------
+    def action_open_ticket(self):
+        """"Open" action used by the My Queue list rows."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Ticket'),
+            'res_model': 'egy.care.ticket',
+            'res_id': self.id,
+            'view_mode': 'form',
+            'views': [(
+                self.env.ref(
+                    'egy_care_tickets.view_egy_care_ticket_details_form').id,
+                'form')],
+            'target': 'current',
+        }
+
+    def _egy_ui_todo(self, label):
+        """UI-phase placeholder for the workflow buttons of the Ticket
+        Details screen: shows a friendly notification instead of raising,
+        so the screens stay fully clickable while the workflow engine is
+        not wired yet (logic phase)."""
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': label,
+                'message': 'This step is displayed and ready; it will be '
+                           'connected to the workflow engine in the logic '
+                           'phase.',
+                'type': 'info',
+                'sticky': False,
+            },
+        }
+
+    def action_send_coordinator(self):
+        return self._egy_ui_todo(_('Send To Co-Ordinator'))
+
+    def action_pending_ticket(self):
+        return self._egy_ui_todo(_('Pending Ticket'))
+
+    def action_assign_ticket(self):
+        return self._egy_ui_todo(_('Assign'))
+
+    def action_create_sub_ticket(self):
+        return self._egy_ui_todo(_('Create Sub-Ticket'))
+
+    def action_create_approval(self):
+        return self._egy_ui_todo(_('Create Approval'))
+
+    # ------------------------------------------------------------------
+    # "Create Ticket" button (bottom of the Create Ticket screen)
+    # ------------------------------------------------------------------
+    def action_create_ticket(self):
+        """Runs after the implicit save triggered by the button, opens the
+        freshly created ticket on the Ticket Details screen."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Ticket'),
+            'res_model': 'egy.care.ticket',
+            'res_id': self.id,
+            'view_mode': 'form',
+            'views': [(
+                self.env.ref(
+                    'egy_care_tickets.view_egy_care_ticket_details_form').id,
+                'form')],
+            'target': 'current',
+            'flags': {'mode': 'display'},
+        }

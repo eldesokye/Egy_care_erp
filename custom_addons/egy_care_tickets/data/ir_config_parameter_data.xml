@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Business limits, editable by managers in Settings > Technical >
+     System Parameters without touching the code.
+
+     Odoo 20 notes:
+     * set_param() no longer exists - the typed helpers are the API now
+       (set_bool / set_int / set_float / set_str on ir.config_parameter).
+     * <function> inside a noupdate="1" block runs on first install only,
+       so admins can tune the values afterwards and upgrades never
+       overwrite them.
+     * set_int() is create-or-update: if the key already exists in the
+       database (e.g. left over from a previous install of the module
+       under a different folder name), the value is updated instead of
+       crashing on the ir_config_parameter_key_uniq unique constraint.
+-->
+<odoo>
+    <data noupdate="1">
+        <function model="ir.config_parameter" name="set_int">
+            <value>egy_care.max_attachments</value>
+            <value>15</value>
+        </function>
+        <function model="ir.config_parameter" name="set_int">
+            <value>egy_care.min_attachments</value>
+            <value>1</value>
+        </function>
+        <function model="ir.config_parameter" name="set_int">
+            <value>egy_care.max_email_cc</value>
+            <value>10</value>
+        </function>
+    </data>
+</odoo>

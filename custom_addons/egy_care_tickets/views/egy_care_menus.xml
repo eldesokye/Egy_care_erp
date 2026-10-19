@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Egy Care Tickets - menu tree (mirrors the PDF sidebar order):
+     Dashboard | My Queue | Manage Users | Manage Tickets | Create Ticket
+     then the supporting screens: Beneficiaries, Configuration -->
+<odoo>
+    <menuitem id="menu_egy_care_root"
+              name="Egy Care Tickets"
+              web_icon="egy_care_tickets,static/description/icon.png"
+              sequence="20"
+              groups="egy_care_tickets.group_egy_care_agent"/>
+
+    <menuitem id="menu_egy_care_dashboard"
+              name="Dashboard"
+              parent="menu_egy_care_root"
+              action="action_egy_care_board_dashboard"
+              sequence="10"/>
+
+    <menuitem id="menu_egy_care_my_queue"
+              name="My Queue"
+              parent="menu_egy_care_root"
+              action="action_egy_care_board_my_queue"
+              sequence="20"/>
+
+    <menuitem id="menu_egy_care_manage_users"
+              name="Manage Users"
+              parent="menu_egy_care_root"
+              action="action_egy_care_manage_users"
+              sequence="30"
+              groups="egy_care_tickets.group_egy_care_manager"/>
+
+    <menuitem id="menu_egy_care_manage_tickets"
+              name="Manage Tickets"
+              parent="menu_egy_care_root"
+              action="action_egy_care_ticket"
+              sequence="40"/>
+
+    <menuitem id="menu_egy_care_create_ticket"
+              name="Create Ticket"
+              parent="menu_egy_care_root"
+              action="action_egy_care_ticket_create"
+              sequence="50"/>
+
+    <menuitem id="menu_egy_care_beneficiaries"
+              name="Beneficiaries"
+              parent="menu_egy_care_root"
+              action="action_egy_care_beneficiary"
+              sequence="60"/>
+
+    <menuitem id="menu_egy_care_config"
+              name="Configuration"
+              parent="menu_egy_care_root"
+              sequence="90"
+              groups="egy_care_tickets.group_egy_care_manager"/>
+
+    <menuitem id="menu_egy_care_config_sources"
+              name="Ticket Sources"
+              parent="menu_egy_care_config"
+              action="action_egy_care_ticket_source"
+              sequence="10"/>
+
+    <menuitem id="menu_egy_care_config_types"
+              name="Ticket Types"
+              parent="menu_egy_care_config"
+              action="action_egy_care_ticket_type"
+              sequence="20"/>
+</odoo>

@@ -1,0 +1,303 @@
+// ==========================================================================
+// Egy Care Tickets - backend theming for screens 1-5.
+// Palette taken from the PDF mock-ups:
+//   navy  #17334f (sidebar) / #1f4e79 (headings, KPI values, primary buttons)
+//   teal  #2a9d8f (accents)
+//   card border #e4e9f0 - pill colors: waiting yellow, pending orange,
+//   in progress green.
+// ==========================================================================
+
+// --------------------------------------------------------------------------
+// Shared: navy primary button + outlined navy buttons
+// --------------------------------------------------------------------------
+.o_egy_btn_navy {
+    background-color: #1f4e79;
+    border-color: #1f4e79;
+
+    &:hover,
+    &:focus {
+        background-color: #163d5e;
+        border-color: #163d5e;
+    }
+}
+
+.btn.o_egy_btn_outline:not(.btn-primary) {
+    color: #1f4e79;
+    border-color: #c9d4e0;
+    background-color: #fff;
+
+    &:hover,
+    &:focus {
+        color: #163d5e;
+        border-color: #1f4e79;
+        background-color: #f4f7fa;
+    }
+}
+
+// --------------------------------------------------------------------------
+// Status pills (badge widget inside the Egy Care lists)
+// Waiting = yellow, Pending = orange, In Progress = green (as on the mock-ups)
+// Odoo 20 badge widget emits bootstrap "text-bg-*" classes (with !important),
+// so the overrides need the same specificity weight.
+// --------------------------------------------------------------------------
+@mixin o_egy_pills {
+    .badge.text-bg-warning {
+        border-radius: 12px;
+        font-weight: 600;
+        padding: 2px 10px;
+        background-color: #fbf0ce !important;
+        color: #8a6d1a !important;
+    }
+
+    .badge.text-bg-info {
+        border-radius: 12px;
+        font-weight: 600;
+        padding: 2px 10px;
+        background-color: #fce3c9 !important;
+        color: #b45309 !important;
+    }
+
+    .badge.text-bg-success {
+        border-radius: 12px;
+        font-weight: 600;
+        padding: 2px 10px;
+        background-color: #d9f0e3 !important;
+        color: #1e7e50 !important;
+    }
+}
+
+.o_egy_queue_list {
+    @include o_egy_pills;
+}
+
+.o_egy_dash_list {
+    @include o_egy_pills;
+}
+
+.o_egy_care_details {
+    @include o_egy_pills;
+}
+
+// --------------------------------------------------------------------------
+// KPI board (My Queue / Dashboard client action)
+// --------------------------------------------------------------------------
+.o_egy_board {
+    padding: 16px 20px 24px;
+    overflow: auto;
+
+    .o_egy_board_head {
+        margin-bottom: 12px;
+
+        .o_egy_board_title {
+            color: #17334f;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .o_egy_btn_refresh {
+            color: #1f4e79;
+            border: 1px solid #c9d4e0;
+            background: #fff;
+
+            &:hover {
+                border-color: #1f4e79;
+                background: #f4f7fa;
+            }
+        }
+    }
+
+    .o_egy_kpi_row {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+    }
+
+    .o_egy_kpi_card {
+        flex: 1 1 150px;
+        min-width: 150px;
+        background: #fff;
+        border: 1px solid #e4e9f0;
+        border-radius: 10px;
+        padding: 14px 16px;
+        cursor: pointer;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+        &:hover {
+            border-color: #2a9d8f;
+        }
+
+        &.o_egy_kpi_active {
+            border-color: #2a9d8f;
+            box-shadow: inset 0 0 0 1px #2a9d8f;
+
+            .o_egy_kpi_value {
+                color: #2a9d8f;
+            }
+        }
+
+        &.o_egy_kpi_loading {
+            opacity: 0.6;
+        }
+
+        .o_egy_kpi_label {
+            color: #6b7a8d;
+            font-size: 13px;
+            margin-bottom: 2px;
+        }
+
+        .o_egy_kpi_value {
+            color: #1f4e79;
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+    }
+
+    .o_egy_board_view_wrap {
+        background: #fff;
+        border: 1px solid #e4e9f0;
+        border-radius: 10px;
+        padding: 8px 4px 4px;
+
+        .o_egy_board_view {
+            // embedded native list: keep it flush inside the card
+            padding: 0;
+        }
+    }
+}
+
+// --------------------------------------------------------------------------
+// Queue / Dashboard list look (light header row like the mock-up)
+// --------------------------------------------------------------------------
+.o_egy_queue_list,
+.o_egy_dash_list,
+.o_egy_users_list {
+    thead th {
+        background-color: #f4f6f9;
+        color: #17334f;
+        font-weight: 600;
+    }
+
+    .o_egy_btn_open,
+    .o_egy_btn_action {
+        padding: 2px 14px;
+        border-radius: 8px;
+    }
+}
+
+// --------------------------------------------------------------------------
+// Ticket Details form
+// --------------------------------------------------------------------------
+.o_egy_care_details {
+    .oe_title.o_egy_title h1 {
+        color: #17334f;
+        font-weight: 700;
+
+        input {
+            color: inherit;
+        }
+    }
+
+    .o_egy_info_grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px 24px;
+        margin: 8px 0 18px;
+
+        @media (max-width: 1200px) {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        @media (max-width: 576px) {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .o_egy_info_card {
+        label {
+            color: #6b7a8d;
+            font-size: 12.5px;
+            margin-bottom: 2px;
+            font-weight: 400;
+        }
+
+        // value row: keep field controls border-less like the mock-up cards
+        > div,
+        > input,
+        .o_field_many2one,
+        .o_field_datetime,
+        .o_field_char {
+            font-weight: 600;
+            color: #17334f;
+        }
+    }
+
+    .o_egy_care_desc {
+        min-height: 120px;
+    }
+
+    .o_egy_wf_bar .o_egy_btn_outline {
+        padding: 6px 16px;
+        border-radius: 8px;
+        font-weight: 500;
+    }
+}
+
+// --------------------------------------------------------------------------
+// Create Ticket form (labels above fields, 3-column grid, card look)
+// --------------------------------------------------------------------------
+.o_egy_care_create {
+    .o_egy_card {
+        background: #fff;
+        border: 1px solid #e4e9f0;
+        border-radius: 10px;
+        padding: 20px 22px;
+    }
+
+    .row > div > label {
+        color: #6b7a8d;
+        font-size: 12.5px;
+        font-weight: 400;
+        margin-bottom: 4px;
+        width: 100%;
+    }
+
+    .o_egy_checks {
+        padding-bottom: 4px;
+    }
+
+    .o_egy_check > div {
+        margin: 0; // neutralize the boolean wrapper margin
+    }
+
+    .o_egy_check label {
+        color: #17334f;
+        font-weight: 500;
+    }
+
+    .o_egy_desc_block {
+        margin-top: 18px;
+
+        > label {
+            color: #6b7a8d;
+            font-size: 12.5px;
+            font-weight: 400;
+        }
+    }
+
+    .o_egy_care_desc {
+        min-height: 140px;
+    }
+
+    .o_egy_create_actions .o_egy_btn_navy {
+        padding: 6px 22px;
+    }
+}
+
+// --------------------------------------------------------------------------
+// Kanban card reference color (unchanged since screen 1)
+// --------------------------------------------------------------------------
+.o_egy_kanban_ref {
+    color: #17334f;
+}

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Odoo 19/20 security structure:
+     - res.groups.privilege replaces the old group "category_id" mechanism
+     - record rules no longer exist in Odoo 20 (domains on access rights) -->
+<odoo>
+    <record id="module_category_egy_care" model="ir.module.category">
+        <field name="name">Egy Care</field>
+        <field name="description">Egy Care Tickets application access rights.</field>
+        <field name="sequence">25</field>
+    </record>
+
+    <record id="privilege_egy_care" model="res.groups.privilege">
+        <field name="name">Egy Care</field>
+        <field name="sequence">25</field>
+        <field name="category_id" ref="module_category_egy_care"/>
+    </record>
+
+    <record id="group_egy_care_agent" model="res.groups">
+        <field name="name">Agent</field>
+        <field name="sequence">10</field>
+        <field name="privilege_id" ref="privilege_egy_care"/>
+        <field name="implied_ids" eval="[(6, 0, [ref('base.group_user')])]"/>
+        <field name="comment">Egy Care ticket agents: create tickets and work on their queue.</field>
+    </record>
+
+    <record id="group_egy_care_manager" model="res.groups">
+        <field name="name">Manager</field>
+        <field name="sequence">20</field>
+        <field name="privilege_id" ref="privilege_egy_care"/>
+        <field name="implied_ids" eval="[(6, 0, [ref('group_egy_care_agent')])]"/>
+        <field name="comment">Egy Care managers: full access on tickets, beneficiaries, configuration and user management.</field>
+    </record>
+
+    <!-- Administrators (Settings group) are automatically Egy Care managers -->
+    <record id="base.group_system" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('group_egy_care_manager'))]"/>
+    </record>
+</odoo>

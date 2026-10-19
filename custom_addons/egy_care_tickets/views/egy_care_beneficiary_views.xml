@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Egy Care Tickets - Beneficiary registry views -->
+<odoo>
+    <record id="view_egy_care_beneficiary_form" model="ir.ui.view">
+        <field name="name">egy.care.beneficiary.form</field>
+        <field name="model">egy.care.beneficiary</field>
+        <field name="arch" type="xml">
+            <form string="Beneficiary">
+                <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <field name="active" invisible="1"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1>
+                            <field name="name" placeholder="Beneficiary name"/>
+                        </h1>
+                    </div>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_tickets" type="object" class="oe_stat_button">
+                            <field name="ticket_count" widget="statinfo" string="Tickets"/>
+                        </button>
+                    </div>
+                    <group>
+                        <group name="identity" string="Identity">
+                            <field name="card_no"/>
+                            <field name="company_name" string="Company"/>
+                            <field name="is_vip" string="VIP"/>
+                        </group>
+                        <group name="contact" string="Contact">
+                            <field name="phone" string="Phone / WhatsApp"/>
+                            <field name="email"/>
+                            <field name="fax" string="Fax No"/>
+                        </group>
+                    </group>
+                    <group string="Notes">
+                        <field name="notes" nolabel="1" placeholder="Internal notes..."/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_egy_care_beneficiary_list" model="ir.ui.view">
+        <field name="name">egy.care.beneficiary.list</field>
+        <field name="model">egy.care.beneficiary</field>
+        <field name="arch" type="xml">
+            <list string="Beneficiaries">
+                <field name="card_no" string="Card No"/>
+                <field name="name" string="Beneficiary Name"/>
+                <field name="company_name" string="Company" optional="show"/>
+                <field name="phone" string="Phone / WhatsApp" optional="show"/>
+                <field name="email" optional="hide"/>
+                <field name="is_vip" widget="boolean" string="VIP" optional="show"/>
+                <field name="ticket_count" string="Tickets" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_egy_care_beneficiary_search" model="ir.ui.view">
+        <field name="name">egy.care.beneficiary.search</field>
+        <field name="model">egy.care.beneficiary</field>
+        <field name="arch" type="xml">
+            <search string="Beneficiaries">
+                <field name="name"/>
+                <field name="card_no"/>
+                <field name="company_name"/>
+                <filter name="filter_vip" string="VIP" domain="[('is_vip', '=', True)]"/>
+                <!-- Odoo 20: plain <group> only (expand/string removed). -->
+                <group>
+                    <filter name="group_company" string="Company" context="{'group_by': 'company_name'}"/>
+                    <filter name="group_vip" string="VIP" context="{'group_by': 'is_vip'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_egy_care_beneficiary" model="ir.actions.act_window">
+        <field name="name">Beneficiaries</field>
+        <field name="res_model">egy.care.beneficiary</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_egy_care_beneficiary_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No beneficiaries yet
+            </p>
+            <p>
+                Beneficiaries are also created automatically when you pick a new
+                name in the Card No field of the Create Ticket screen.
+            </p>
+        </field>
+    </record>
+</odoo>

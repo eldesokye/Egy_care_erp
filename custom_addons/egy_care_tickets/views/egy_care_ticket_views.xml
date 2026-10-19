@@ -1,0 +1,489 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Egy Care Tickets - screens 1 to 5, mapped from the PDF mock-ups:
+
+     Screen 1  Create Ticket    -> view_egy_care_ticket_form (creation form)
+     Screen 2  Ticket Details   -> view_egy_care_ticket_details_form (default form)
+     Screen 3  My Queue         -> ir.actions.client "egy_care.board" (KPI cards + queue list)
+     Screen 4  Dashboard        -> ir.actions.client "egy_care.board" (KPI cards + queued list)
+     Screen -  Manage Tickets   -> classic list/kanban/form action
+-->
+<odoo>
+    <!-- ================================================================
+         SCREEN 2 - TICKET DETAILS (default form view of the model)
+         Header: Create Approval + status bar
+         Info grid: Ticket Number | Approval Number | Ticket Source | From
+                    Received At    | Due Date        | Ticket Aging  | Beneficiary
+         Tabs: Ticket Details | Ticket Attachments | Queue & SLA |
+               Beneficiary Ticket History
+         Bottom bar: Send To Co-Ordinator | Re-Queue Ticket | Close Ticket |
+                     Pending Ticket | Assign | Create Sub-Ticket
+         ================================================================ -->
+    <record id="view_egy_care_ticket_details_form" model="ir.ui.view">
+        <field name="name">egy.care.ticket.details.form</field>
+        <field name="model">egy.care.ticket</field>
+        <field name="arch" type="xml">
+            <form string="Ticket Details" class="o_egy_care_details">
+                <header>
+                    <button name="action_create_approval" type="object"
+                            string="Create Approval" class="btn-primary o_egy_btn_navy"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,in_progress,on_hold,resolved,closed"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="VIP" bg_color="text-bg-warning"
+                            invisible="not vip_ticket"/>
+                    <div class="oe_title o_egy_title">
+                        <h1>
+                            Ticket <field name="ticket_no" readonly="1" placeholder="New Ticket"/>
+                        </h1>
+                    </div>
+                    <div class="o_egy_info_grid">
+                        <div class="o_egy_info_card">
+                            <label for="ticket_no" string="Ticket Number"/>
+                            <field name="ticket_no" readonly="1" placeholder="—"/>
+                        </div>
+                        <div class="o_egy_info_card">
+                            <label for="approval_no" string="Approval Number"/>
+                            <field name="approval_no" placeholder="—"/>
+                        </div>
+                        <div class="o_egy_info_card">
+                            <label for="source_id" string="Ticket Source"/>
+                            <field name="source_id"/>
+                        </div>
+                        <div class="o_egy_info_card">
+                            <label for="sender_from" string="From"/>
+                            <field name="sender_from" placeholder="—"/>
+                        </div>
+                        <div class="o_egy_info_card">
+                            <label for="received_at" string="Received At"/>
+                            <field name="received_at" readonly="1"/>
+                        </div>
+                        <div class="o_egy_info_card">
+                            <label for="due_date" string="Due Date"/>
+                            <field name="due_date"/>
+                        </div>
+                        <div class="o_egy_info_card">
+                            <label for="ticket_aging" string="Ticket Aging"/>
+                            <field name="ticket_aging" readonly="1"/>
+                        </div>
+                        <div class="o_egy_info_card">
+                            <label for="beneficiary_id" string="Beneficiary"/>
+                            <field name="beneficiary_id"/>
+                        </div>
+                    </div>
+                    <notebook class="o_egy_notebook">
+                        <page string="Ticket Details" name="page_ticket_details">
+                            <group>
+                                <group name="details_left">
+                                    <field name="type_id" string="Ticket Type"/>
+                                    <field name="company_name" string="Company"/>
+                                    <field name="user_id" string="Assign To"
+                                           domain="[('is_egy_agent', '=', True)]"/>
+                                </group>
+                                <group name="details_right">
+                                    <field name="phone_whatsapp" string="Phone / WhatsApp"/>
+                                    <field name="email" string="Email"/>
+                                    <field name="email_cc" string="Email CC"/>
+                                    <field name="fax_no" string="Fax No"/>
+                                </group>
+                            </group>
+                            <label for="description" string="Ticket Description"/>
+                            <field name="description" nolabel="1" class="o_egy_care_desc"
+                                   placeholder="Describe the ticket..."/>
+                        </page>
+                        <page string="Ticket Attachments" name="page_attachments">
+                            <field name="attachment_ids" nolabel="1">
+                                <list>
+                                    <field name="name" string="File Name"/>
+                                    <field name="mimetype" string="Type" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Queue &amp; SLA" name="page_queue_sla">
+                            <group>
+                                <group string="Queue">
+                                    <field name="queue_status"/>
+                                    <field name="priority" widget="priority"/>
+                                    <field name="vip_ticket" string="VIP Ticket"/>
+                                    <field name="auto_assign" string="Auto Assign"/>
+                                </group>
+                                <group string="SLA / OLA (minutes)">
+                                    <field name="agreed_sla"/>
+                                    <field name="current_sla"/>
+                                    <field name="agreed_ola"/>
+                                    <field name="current_ola"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Beneficiary Ticket History" name="page_history">
+                            <field name="beneficiary_ticket_ids" nolabel="1" readonly="1">
+                                <list>
+                                    <field name="ticket_no" string="Ticket No"/>
+                                    <field name="type_id" string="Type"/>
+                                    <field name="source_id" string="Source"/>
+                                    <field name="queue_status" string="Status" widget="badge"
+                                           decoration-warning="queue_status == 'waiting'"
+                                           decoration-info="queue_status == 'pending'"
+                                           decoration-success="queue_status == 'in_progress'"/>
+                                    <field name="state" string="State" optional="hide"/>
+                                    <field name="create_date" string="Created On" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                    <div class="o_egy_wf_bar d-flex gap-2 flex-wrap mt-3 mb-2">
+                        <button name="action_send_coordinator" type="object"
+                                string="Send To Co-Ordinator" class="btn-outline-primary o_egy_btn_outline"/>
+                        <button name="action_reset_draft" type="object"
+                                string="Re-Queue Ticket" class="btn-outline-primary o_egy_btn_outline"/>
+                        <button name="action_close" type="object"
+                                string="Close Ticket" class="btn-outline-primary o_egy_btn_outline"/>
+                        <button name="action_pending_ticket" type="object"
+                                string="Pending Ticket" class="btn-outline-primary o_egy_btn_outline"/>
+                        <button name="action_assign_ticket" type="object"
+                                string="Assign" class="btn-outline-primary o_egy_btn_outline"/>
+                        <button name="action_create_sub_ticket" type="object"
+                                string="Create Sub-Ticket" class="btn-outline-primary o_egy_btn_outline"/>
+                    </div>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ================================================================
+         SCREEN 1 - CREATE TICKET (creation form, opened by its own action)
+         Row-wise 3-column grid exactly like the mock-up:
+           Row 1: Card No *        | Beneficiary Name * | Company
+           Row 2: Ticket Source *  | Ticket Type *      | Fax No
+           Row 3: Phone / WhatsApp | Email              | Attachments * (max 15)
+           Row 4: Email CC (max 10)| Assign To          | Auto Assign + VIP Ticket
+         then full width Ticket Description * and Create Ticket / Cancel
+         ================================================================ -->
+    <record id="view_egy_care_ticket_form" model="ir.ui.view">
+        <field name="name">egy.care.ticket.form</field>
+        <field name="model">egy.care.ticket</field>
+        <field name="arch" type="xml">
+            <form string="Create Ticket" class="o_egy_care_create">
+                <field name="ticket_no" invisible="1"/>
+                <sheet>
+                    <div class="o_egy_card">
+                        <div class="row g-3">
+                            <div class="col-lg-4 col-md-6 col-12">
+                                <label for="beneficiary_id" string="Card No"/>
+                                <field name="beneficiary_id" required="1"
+                                       placeholder="Search by Card No or beneficiary name"/>
+                            </div>
+                            <div class="col-lg-4 col-md-6 col-12">
+                                <label for="beneficiary_name" string="Beneficiary Name"/>
+                                <field name="beneficiary_name"/>
+                            </div>
+                            <div class="col-lg-4 col-md-6 col-12">
+                                <label for="company_name" string="Company"/>
+                                <field name="company_name"/>
+                            </div>
+                            <div class="col-lg-4 col-md-6 col-12">
+                                <label for="source_id" string="Ticket Source"/>
+                                <field name="source_id" required="1"/>
+                            </div>
+                            <div class="col-lg-4 col-md-6 col-12">
+                                <label for="type_id" string="Ticket Type"/>
+                                <field name="type_id" required="1" placeholder="Select"/>
+                            </div>
+                            <div class="col-lg-4 col-md-6 col-12">
+                                <label for="fax_no" string="Fax No"/>
+                                <field name="fax_no"/>
+                            </div>
+                            <div class="col-lg-4 col-md-6 col-12">
+                                <label for="phone_whatsapp" string="Phone / WhatsApp"/>
+                                <field name="phone_whatsapp"/>
+                            </div>
+                            <div class="col-lg-4 col-md-6 col-12">
+                                <label for="email" string="Email"/>
+                                <field name="email"/>
+                            </div>
+                            <div class="col-lg-4 col-md-6 col-12">
+                                <label for="attachment_ids" string="Attachments (max 15)"/>
+                                <field name="attachment_ids" widget="many2many_binary"
+                                       nolabel="1"/>
+                            </div>
+                            <div class="col-lg-4 col-md-6 col-12">
+                                <label for="email_cc" string="Email CC (max 10)"/>
+                                <field name="email_cc"
+                                       placeholder="Comma-separated, e.g. a@mail.com, b@mail.com"/>
+                            </div>
+                            <div class="col-lg-4 col-md-6 col-12">
+                                <label for="user_id" string="Assign To"/>
+                                <field name="user_id" domain="[('is_egy_agent', '=', True)]"/>
+                            </div>
+                            <div class="col-lg-4 col-md-6 col-12">
+                                <div class="o_egy_checks d-flex align-items-center gap-4 h-100">
+                                    <div class="o_egy_check d-flex align-items-center gap-2">
+                                        <field name="auto_assign"/>
+                                        <label for="auto_assign" class="mb-0">Auto Assign</label>
+                                    </div>
+                                    <div class="o_egy_check d-flex align-items-center gap-2">
+                                        <field name="vip_ticket"/>
+                                        <label for="vip_ticket" class="mb-0">VIP Ticket</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="o_egy_desc_block">
+                            <label for="description" string="Ticket Description"/>
+                            <field name="description" nolabel="1" class="o_egy_care_desc"
+                                   placeholder="Describe the ticket..."/>
+                        </div>
+                        <div class="o_egy_create_actions d-flex gap-2 mt-3">
+                            <button name="action_create_ticket" type="object"
+                                    string="Create Ticket"
+                                    class="btn-primary o_egy_btn_navy"
+                                    invisible="ticket_no"/>
+                            <button string="Cancel" special="cancel"
+                                    class="btn-outline-primary o_egy_btn_outline"
+                                    invisible="ticket_no"/>
+                        </div>
+                    </div>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ================================================================
+         MANAGE TICKETS - list
+         ================================================================ -->
+    <record id="view_egy_care_ticket_list" model="ir.ui.view">
+        <field name="name">egy.care.ticket.list</field>
+        <field name="model">egy.care.ticket</field>
+        <field name="arch" type="xml">
+            <list string="Tickets"
+                  decoration-info="state == 'draft'"
+                  decoration-warning="state == 'on_hold'"
+                  decoration-success="state in ('resolved', 'closed')"
+                  decoration-muted="state == 'cancelled'">
+                <field name="ticket_no" string="Ticket No"/>
+                <field name="beneficiary_id" string="Card No / Beneficiary"/>
+                <field name="queue_status" string="Status" optional="show" widget="badge"
+                       decoration-warning="queue_status == 'waiting'"
+                       decoration-info="queue_status == 'pending'"
+                       decoration-success="queue_status == 'in_progress'"/>
+                <field name="type_id" string="Type" optional="show"/>
+                <field name="source_id" string="Source" optional="show"/>
+                <field name="user_id" widget="many2one_avatar_user" string="Agent" optional="show"/>
+                <field name="vip_ticket" widget="boolean" optional="show"/>
+                <field name="priority" widget="priority" optional="show"/>
+                <field name="state" widget="badge" optional="show"
+                       decoration-info="state == 'draft'"
+                       decoration-warning="state == 'on_hold'"
+                       decoration-success="state in ('resolved', 'closed')"
+                       decoration-muted="state == 'cancelled'"/>
+                <field name="create_date" string="Created On" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ================================================================
+         MY QUEUE - list (columns exactly like the mock-up)
+         ================================================================ -->
+    <record id="view_egy_care_ticket_queue_list" model="ir.ui.view">
+        <field name="name">egy.care.ticket.queue.list</field>
+        <field name="model">egy.care.ticket</field>
+        <field name="arch" type="xml">
+            <list string="My Queue" create="false" edit="false" delete="false"
+                  class="o_egy_queue_list">
+                <field name="ticket_no" string="Ticket No"/>
+                <field name="current_sla" string="Current SLA"/>
+                <field name="current_ola" string="Current OLA"/>
+                <field name="queue_status" string="Status" widget="badge"
+                       decoration-warning="queue_status == 'waiting'"
+                       decoration-info="queue_status == 'pending'"
+                       decoration-success="queue_status == 'in_progress'"/>
+                <field name="type_id" string="Type"/>
+                <field name="source_id" string="Source"/>
+                <field name="sender_from" string="From"/>
+                <field name="card_no" string="Card No"/>
+                <button name="action_open_ticket" type="object" string="Open"
+                        class="btn-outline-primary o_egy_btn_open"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ================================================================
+         DASHBOARD - queued tickets list (columns exactly like the mock-up)
+         ================================================================ -->
+    <record id="view_egy_care_ticket_dashboard_list" model="ir.ui.view">
+        <field name="name">egy.care.ticket.dashboard.list</field>
+        <field name="model">egy.care.ticket</field>
+        <field name="arch" type="xml">
+            <list string="Queued tickets" create="false" edit="false" delete="false"
+                  class="o_egy_dash_list">
+                <field name="ticket_no" string="Ticket No"/>
+                <field name="current_sla" string="Current SLA"/>
+                <field name="agreed_sla" string="Agreed SLA"/>
+                <field name="agreed_ola" string="Agreed OLA"/>
+                <field name="current_ola" string="Current OLA"/>
+                <field name="queue_status" string="Status" widget="badge"
+                       decoration-warning="queue_status == 'waiting'"
+                       decoration-info="queue_status == 'pending'"
+                       decoration-success="queue_status == 'in_progress'"/>
+                <field name="type_id" string="Type"/>
+                <field name="source_id" string="Source"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ================================================================
+         KANBAN - board grouped by status
+         ================================================================ -->
+    <record id="view_egy_care_ticket_kanban" model="ir.ui.view">
+        <field name="name">egy.care.ticket.kanban</field>
+        <field name="model">egy.care.ticket</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_small_column">
+                <field name="state"/>
+                <field name="ticket_no"/>
+                <field name="beneficiary_id"/>
+                <field name="vip_ticket"/>
+                <field name="priority"/>
+                <field name="user_id"/>
+                <field name="type_id"/>
+                <field name="source_id"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="p-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <strong class="o_egy_kanban_ref"><field name="ticket_no"/></strong>
+                                <field name="priority" widget="priority"/>
+                            </div>
+                            <div class="mt-1">
+                                <field name="beneficiary_id"/>
+                            </div>
+                            <div class="text-muted small mt-1">
+                                <field name="type_id"/>
+                                <span t-if="record.source_id.raw_value"> &#183; </span>
+                                <field name="source_id"/>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <field name="user_id" widget="many2one_avatar"/>
+                                <span t-if="record.vip_ticket.raw_value" class="badge text-bg-warning">VIP</span>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- ================================================================
+         SEARCH - shared by Manage Tickets, My Queue and Dashboard
+         ================================================================ -->
+    <record id="view_egy_care_ticket_search" model="ir.ui.view">
+        <field name="name">egy.care.ticket.search</field>
+        <field name="model">egy.care.ticket</field>
+        <field name="arch" type="xml">
+            <search string="Tickets">
+                <field name="ticket_no"/>
+                <field name="beneficiary_id" string="Card No / Beneficiary"/>
+                <field name="card_no"/>
+                <field name="sender_from" string="From"/>
+                <field name="user_id"/>
+                <field name="description"/>
+                <filter name="filter_my_queue" string="My Queue"
+                        domain="[('user_id', '=', uid)]"/>
+                <filter name="filter_unassigned" string="Unassigned"
+                        domain="[('user_id', '=', False)]"/>
+                <filter name="filter_vip" string="VIP"
+                        domain="[('vip_ticket', '=', True)]"/>
+                <separator/>
+                <filter name="filter_waiting" string="Waiting"
+                        domain="[('queue_status', '=', 'waiting')]"/>
+                <filter name="filter_pending" string="Pending"
+                        domain="[('queue_status', '=', 'pending')]"/>
+                <filter name="filter_queue_in_progress" string="In Progress"
+                        domain="[('queue_status', '=', 'in_progress')]"/>
+                <separator/>
+                <filter name="filter_open" string="Open"
+                        domain="[('state', 'in', ('draft', 'in_progress', 'on_hold'))]"/>
+                <separator/>
+                <filter name="source_mobile_app" string="Source: Mobile App"
+                        domain="[('source_id.code', '=', 'mobile_app')]"/>
+                <filter name="source_email" string="Source: Email"
+                        domain="[('source_id.code', '=', 'email')]"/>
+                <filter name="source_direct" string="Source: Direct"
+                        domain="[('source_id.code', '=', 'direct')]"/>
+                <separator/>
+                <filter name="filter_pharmacy" string="Pharmacy"
+                        domain="[('type_category', '=', 'pharmacy')]"/>
+                <filter name="filter_non_pharmacy" string="Non-Pharmacy"
+                        domain="[('type_category', '=', 'non_pharmacy')]"/>
+                <separator/>
+                <!-- Odoo 20: plain <group> only. The web client collects every
+                     group_by filter into the "Group By" dropdown. -->
+                <group>
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="group_queue_status" string="Queue Status" context="{'group_by': 'queue_status'}"/>
+                    <filter name="group_agent" string="Agent" context="{'group_by': 'user_id'}"/>
+                    <filter name="group_source" string="Source" context="{'group_by': 'source_id'}"/>
+                    <filter name="group_type" string="Type" context="{'group_by': 'type_id'}"/>
+                    <filter name="group_beneficiary" string="Beneficiary" context="{'group_by': 'beneficiary_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ================================================================
+         ACTIONS
+         ================================================================ -->
+    <record id="action_egy_care_ticket" model="ir.actions.act_window">
+        <field name="name">Manage Tickets</field>
+        <field name="res_model">egy.care.ticket</field>
+        <field name="view_mode">list,form,kanban</field>
+        <field name="search_view_id" ref="view_egy_care_ticket_search"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'sequence': 1, 'view_mode': 'list', 'view_id': ref('view_egy_care_ticket_list')}),
+            (0, 0, {'sequence': 2, 'view_mode': 'form', 'view_id': ref('view_egy_care_ticket_details_form')}),
+            (0, 0, {'sequence': 3, 'view_mode': 'kanban', 'view_id': ref('view_egy_care_ticket_kanban')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No tickets yet
+            </p>
+            <p>
+                Use the Create Ticket screen to register the first ticket.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_egy_care_ticket_create" model="ir.actions.act_window">
+        <field name="name">Create Ticket</field>
+        <field name="res_model">egy.care.ticket</field>
+        <field name="view_mode">form</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'sequence': 1, 'view_mode': 'form', 'view_id': ref('view_egy_care_ticket_form')})]"/>
+        <field name="target">current</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Register a new ticket
+            </p>
+        </field>
+    </record>
+
+    <!-- Screens 3 & 4: KPI cards (clickable filters) + embedded native list.
+         The board component (static/src/board/egy_care_board.js) reads
+         params.mode and the view ids below. -->
+    <record id="action_egy_care_board_my_queue" model="ir.actions.client">
+        <field name="name">My Queue</field>
+        <field name="tag">egy_care.board</field>
+        <field name="params" eval="{'mode': 'queue',
+                                    'list_view_id': ref('view_egy_care_ticket_queue_list'),
+                                    'search_view_id': ref('view_egy_care_ticket_search')}"/>
+    </record>
+
+    <record id="action_egy_care_board_dashboard" model="ir.actions.client">
+        <field name="name">Dashboard</field>
+        <field name="tag">egy_care.board</field>
+        <field name="params" eval="{'mode': 'dashboard',
+                                    'list_view_id': ref('view_egy_care_ticket_dashboard_list'),
+                                    'search_view_id': ref('view_egy_care_ticket_search')}"/>
+    </record>
+</odoo>

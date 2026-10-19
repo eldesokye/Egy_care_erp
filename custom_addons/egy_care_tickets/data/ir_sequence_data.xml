@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="seq_egy_care_ticket" model="ir.sequence">
+            <field name="name">Egy Care Ticket</field>
+            <field name="code">egy.care.ticket</field>
+            <field name="prefix">EC/%(year)s/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_egy_care_beneficiary_card" model="ir.sequence">
+            <field name="name">Egy Care Beneficiary Card</field>
+            <field name="code">egy.care.beneficiary.card</field>
+            <field name="prefix">EGC-</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>

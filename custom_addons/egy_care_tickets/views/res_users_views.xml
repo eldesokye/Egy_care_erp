@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Egy Care Tickets - Screen 4: Manage Users (agents overview).
+     Columns exactly like the PDF mock-up:
+     User Name | User Type | Start Shift Time | In Break | In Progress
+     Ticket No. | Assigned Tickets | Resolved Tickets | Actions
+     The two action buttons open the user's tickets / the user profile. -->
+<odoo>
+    <record id="view_egy_care_users_list" model="ir.ui.view">
+        <field name="name">res.users.list.egy.care</field>
+        <field name="model">res.users</field>
+        <field name="arch" type="xml">
+            <list string="Manage Users" create="false" edit="false" delete="false"
+                  class="o_egy_users_list">
+                <field name="name" string="User Name"/>
+                <field name="login" optional="hide"/>
+                <field name="egy_user_type" string="User Type"/>
+                <field name="egy_shift_start" string="Start Shift Time"/>
+                <field name="egy_on_break" string="In Break"/>
+                <field name="egy_in_progress_ticket_no" string="In Progress Ticket No."/>
+                <field name="egy_assigned_ticket_count" string="Assigned Tickets"/>
+                <field name="egy_resolved_ticket_count" string="Resolved Tickets"/>
+                <button name="action_view_egy_tickets" type="object" string="Tickets"
+                        class="btn-outline-primary o_egy_btn_outline o_egy_btn_action"/>
+                <button name="action_open_egy_profile" type="object" string="Profile"
+                        class="btn-outline-primary o_egy_btn_outline o_egy_btn_action"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_egy_care_manage_users" model="ir.actions.act_window">
+        <field name="name">Manage Users</field>
+        <field name="res_model">res.users</field>
+        <field name="view_mode">list</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'sequence': 1, 'view_mode': 'list', 'view_id': ref('view_egy_care_users_list')})]"/>
+        <field name="domain">[('is_egy_agent', '=', True)]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No agents yet
+            </p>
+            <p>
+                Add users to the Egy Care / Agent group (Settings &gt; Users) to
+                make them eligible for auto assignment.
+            </p>
+        </field>
+    </record>
+</odoo>

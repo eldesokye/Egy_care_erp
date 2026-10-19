@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Egy Care Tickets - demo data reproducing the screen mock-ups:
+     3 agents (User A/B/C), 3 beneficiaries and 6 tickets spread over the
+     queue statuses, sources and types used by the designs.
+     NOTE: the XML eval context in Odoo 20 (odoo/tools/convert.py,
+     _get_eval_context) exposes DateTime/datetime (the datetime module),
+     timedelta, relativedelta, time, pytz, ref, obj, Command, version.
+     There is NO "Datetime" name - use DateTime.now(). -->
+<odoo>
+    <!-- ===================== Demo agents (Manage Users) ===================== -->
+    <record id="demo_user_a" model="res.users">
+        <field name="name">User A</field>
+        <field name="login">user.a@egycare.demo</field>
+        <field name="email">user.a@egycare.demo</field>
+        <field name="egy_user_type">doctor</field>
+        <field name="egy_shift_start" eval="(DateTime.now() - timedelta(days=1)).strftime('%Y-%m-%d 09:15:00')"/>
+        <field name="egy_on_break" eval="False"/>
+        <field name="group_ids" eval="[(6, 0, [ref('base.group_user'), ref('egy_care_tickets.group_egy_care_agent')])]"/>
+    </record>
+
+    <record id="demo_user_b" model="res.users">
+        <field name="name">User B</field>
+        <field name="login">user.b@egycare.demo</field>
+        <field name="email">user.b@egycare.demo</field>
+        <field name="egy_user_type">doctor</field>
+        <field name="egy_shift_start" eval="(DateTime.now() - timedelta(days=1)).strftime('%Y-%m-%d 10:39:00')"/>
+        <field name="egy_on_break" eval="False"/>
+        <field name="group_ids" eval="[(6, 0, [ref('base.group_user'), ref('egy_care_tickets.group_egy_care_agent')])]"/>
+    </record>
+
+    <record id="demo_user_c" model="res.users">
+        <field name="name">User C</field>
+        <field name="login">user.c@egycare.demo</field>
+        <field name="email">user.c@egycare.demo</field>
+        <field name="egy_user_type">doctor</field>
+        <field name="egy_shift_start" eval="(DateTime.now() - timedelta(days=2)).strftime('%Y-%m-%d 12:45:00')"/>
+        <field name="egy_on_break" eval="True"/>
+        <field name="group_ids" eval="[(6, 0, [ref('base.group_user'), ref('egy_care_tickets.group_egy_care_agent')])]"/>
+    </record>
+
+    <!-- ===================== Demo beneficiaries ===================== -->
+    <record id="demo_beneficiary_1" model="egy.care.beneficiary">
+        <field name="name">Sample Beneficiary 1</field>
+        <field name="company_name">Nile Telecom</field>
+        <field name="phone">+20 100 123 4567</field>
+        <field name="email">ahmed.hassan@example.com</field>
+        <field name="fax">+20 2 2345 6789</field>
+        <field name="is_vip">True</field>
+    </record>
+
+    <record id="demo_beneficiary_2" model="egy.care.beneficiary">
+        <field name="name">Sample Beneficiary 2</field>
+        <field name="company_name">Delta Foods</field>
+        <field name="phone">+20 122 987 6543</field>
+        <field name="email">mona.a@example.com</field>
+    </record>
+
+    <record id="demo_beneficiary_3" model="egy.care.beneficiary">
+        <field name="name">Sample Beneficiary 3</field>
+        <field name="company_name">Cairo Clinics</field>
+        <field name="phone">+20 111 555 8899</field>
+        <field name="email">karim.s@example.com</field>
+    </record>
+
+    <!-- ===================== Demo attachments ===================== -->
+    <record id="demo_attachment_1" model="ir.attachment">
+        <field name="name">prescription-demo.txt</field>
+        <field name="datas">RWd5IENhcmUgZGVtbyBhdHRhY2htZW50IDE=</field>
+    </record>
+    <record id="demo_attachment_2" model="ir.attachment">
+        <field name="name">scan-report-demo.txt</field>
+        <field name="datas">RWd5IENhcmUgZGVtbyBhdHRhY2htZW50IDI=</field>
+    </record>
+    <record id="demo_attachment_3" model="ir.attachment">
+        <field name="name">lab-results-demo.txt</field>
+        <field name="datas">RWd5IENhcmUgZGVtbyBhdHRhY2htZW50IDM=</field>
+    </record>
+
+    <!-- ===================== Demo tickets ===================== -->
+    <record id="demo_ticket_1" model="egy.care.ticket">
+        <field name="beneficiary_id" ref="demo_beneficiary_1"/>
+        <field name="source_id" ref="source_mobile_app"/>
+        <field name="type_id" ref="type_medication"/>
+        <field name="sender_from">Sender A</field>
+        <field name="phone_whatsapp">+20 100 123 4567</field>
+        <field name="email">ahmed.hassan@example.com</field>
+        <field name="description">Created from mobile application approval request. Provider: Nile Pharmacy. Type: Medication.</field>
+        <field name="auto_assign">False</field>
+        <field name="user_id" ref="demo_user_a"/>
+        <field name="queue_status">pending</field>
+        <field name="current_sla" eval="18"/>
+        <field name="agreed_sla" eval="120"/>
+        <field name="current_ola" eval="0"/>
+        <field name="agreed_ola" eval="15"/>
+        <field name="received_at" eval="(DateTime.now() - timedelta(minutes=18)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="due_date" eval="(DateTime.now() + timedelta(minutes=102)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="attachment_ids" eval="[(6, 0, [ref('demo_attachment_1')])]"/>
+    </record>
+
+    <record id="demo_ticket_2" model="egy.care.ticket">
+        <field name="beneficiary_id" ref="demo_beneficiary_1"/>
+        <field name="source_id" ref="source_mobile_app"/>
+        <field name="type_id" ref="type_medication"/>
+        <field name="sender_from">Sender B</field>
+        <field name="phone_whatsapp">+20 100 123 4567</field>
+        <field name="description">Created from mobile application approval request. Provider: Delta Pharmacy. Type: Medication.</field>
+        <field name="auto_assign">False</field>
+        <field name="user_id" ref="demo_user_b"/>
+        <field name="queue_status">pending</field>
+        <field name="current_sla" eval="14"/>
+        <field name="agreed_sla" eval="120"/>
+        <field name="current_ola" eval="0"/>
+        <field name="agreed_ola" eval="15"/>
+        <field name="received_at" eval="(DateTime.now() - timedelta(minutes=14)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="due_date" eval="(DateTime.now() + timedelta(minutes=106)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="attachment_ids" eval="[(6, 0, [ref('demo_attachment_1')])]"/>
+    </record>
+
+    <record id="demo_ticket_3" model="egy.care.ticket">
+        <field name="beneficiary_id" ref="demo_beneficiary_2"/>
+        <field name="source_id" ref="source_email"/>
+        <field name="type_id" ref="type_scan"/>
+        <field name="sender_from">Sender C</field>
+        <field name="email">mona.a@example.com</field>
+        <field name="description">Created from mobile application approval request. Provider: Cairo Radiology. Type: Scan.</field>
+        <field name="auto_assign">False</field>
+        <field name="user_id" ref="demo_user_c"/>
+        <field name="queue_status">waiting</field>
+        <field name="current_sla" eval="2"/>
+        <field name="agreed_sla" eval="0"/>
+        <field name="current_ola" eval="0"/>
+        <field name="agreed_ola" eval="5"/>
+        <field name="received_at" eval="(DateTime.now() - timedelta(minutes=2)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="attachment_ids" eval="[(6, 0, [ref('demo_attachment_2')])]"/>
+    </record>
+
+    <record id="demo_ticket_4" model="egy.care.ticket">
+        <field name="beneficiary_id" ref="demo_beneficiary_3"/>
+        <field name="source_id" ref="source_direct"/>
+        <field name="type_id" ref="type_lab"/>
+        <field name="sender_from">Sender A</field>
+        <field name="phone_whatsapp">+20 111 555 8899</field>
+        <field name="description">Lab results follow-up registered at the front desk.</field>
+        <field name="auto_assign">False</field>
+        <field name="user_id" ref="demo_user_a"/>
+        <field name="queue_status">in_progress</field>
+        <field name="state">in_progress</field>
+        <field name="current_sla" eval="23"/>
+        <field name="agreed_sla" eval="120"/>
+        <field name="current_ola" eval="0"/>
+        <field name="agreed_ola" eval="20"/>
+        <field name="received_at" eval="(DateTime.now() - timedelta(minutes=23)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="due_date" eval="(DateTime.now() + timedelta(minutes=97)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="attachment_ids" eval="[(6, 0, [ref('demo_attachment_3')])]"/>
+    </record>
+
+    <record id="demo_ticket_5" model="egy.care.ticket">
+        <field name="beneficiary_id" ref="demo_beneficiary_2"/>
+        <field name="source_id" ref="source_phone"/>
+        <field name="type_id" ref="type_inquiry"/>
+        <field name="sender_from">Sender B</field>
+        <field name="phone_whatsapp">+20 122 987 6543</field>
+        <field name="description">Inquiry about the physiotherapy sessions coverage.</field>
+        <field name="auto_assign">False</field>
+        <field name="user_id" ref="demo_user_b"/>
+        <field name="queue_status">pending</field>
+        <field name="current_sla" eval="16"/>
+        <field name="agreed_sla" eval="120"/>
+        <field name="agreed_ola" eval="15"/>
+        <field name="received_at" eval="(DateTime.now() - timedelta(minutes=16)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="attachment_ids" eval="[(6, 0, [ref('demo_attachment_1')])]"/>
+    </record>
+
+    <record id="demo_ticket_6" model="egy.care.ticket">
+        <field name="beneficiary_id" ref="demo_beneficiary_1"/>
+        <field name="source_id" ref="source_whatsapp"/>
+        <field name="type_id" ref="type_complaint"/>
+        <field name="sender_from">Sender C</field>
+        <field name="phone_whatsapp">+20 100 123 4567</field>
+        <field name="description">VIP complaint about delivery delay, waiting for the provider confirmation.</field>
+        <field name="auto_assign">False</field>
+        <field name="user_id" ref="demo_user_c"/>
+        <field name="queue_status">waiting</field>
+        <field name="current_sla" eval="5"/>
+        <field name="agreed_ola" eval="15"/>
+        <field name="received_at" eval="(DateTime.now() - timedelta(minutes=5)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="attachment_ids" eval="[(6, 0, [ref('demo_attachment_2')])]"/>
+    </record>
+</odoo>

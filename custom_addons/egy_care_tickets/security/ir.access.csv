@@ -1,0 +1,10 @@
+id,name,model_id,group_id/id,operation,domain
+access_egy_care_ticket_agent,egy.care.ticket agent,egy.care.ticket,egy_care_tickets.group_egy_care_agent,cru,
+access_egy_care_beneficiary_agent,egy.care.beneficiary agent,egy.care.beneficiary,egy_care_tickets.group_egy_care_agent,cru,
+access_egy_care_ticket_source_agent,egy.care.ticket.source agent,egy.care.ticket.source,egy_care_tickets.group_egy_care_agent,r,
+access_egy_care_ticket_type_agent,egy.care.ticket.type agent,egy.care.ticket.type,egy_care_tickets.group_egy_care_agent,r,
+access_egy_care_ticket_manager,egy.care.ticket manager,egy.care.ticket,egy_care_tickets.group_egy_care_manager,crud,
+access_egy_care_beneficiary_manager,egy.care.beneficiary manager,egy.care.beneficiary,egy_care_tickets.group_egy_care_manager,crud,
+access_egy_care_ticket_source_manager,egy.care.ticket.source manager,egy.care.ticket.source,egy_care_tickets.group_egy_care_manager,crud,
+access_egy_care_ticket_type_manager,egy.care.ticket.type manager,egy.care.ticket.type,egy_care_tickets.group_egy_care_manager,crud,
+access_res_users_egy_care_manager,res.users read manager,res.users,egy_care_tickets.group_egy_care_manager,r,

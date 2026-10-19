@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Runs FIRST on every install/upgrade load: refuses the load when another
+     copy of the suite (technical module name egy_care_tickets*) is already
+     installed or queued in this database. See models/egy_care_install_guard.py
+     for the full rationale. -->
+<odoo>
+    <function model="ir.module.module" name="_egy_guard_single_install"/>
+</odoo>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Egy Care Tickets - master data matching the screen mock-ups.
+     NOT noupdate: re-applied on every install/upgrade so existing
+     databases also receive the sources and types used by the
+     Dashboard / My Queue designs (Mobile App, Direct, Medication,
+     Physiotherapy, Scan, Lab).
+     Idempotent per XML id: on re-load each <record> matches its own
+     external id and becomes an UPDATE, never a duplicate. A row that
+     pre-exists under a DIFFERENT technical module name (installing a
+     renamed folder copy) is refused earlier by the install guard
+     (data/egy_care_install_guard.xml). -->
+<odoo>
+    <data>
+        <!-- ================== Sources (mock-ups) ================== -->
+        <record id="source_mobile_app" model="egy.care.ticket.source">
+            <field name="name">Mobile App</field>
+            <field name="code">mobile_app</field>
+            <field name="sequence">0</field>
+        </record>
+        <record id="source_direct" model="egy.care.ticket.source">
+            <field name="name">Direct</field>
+            <field name="code">direct</field>
+            <field name="sequence">7</field>
+        </record>
+
+        <!-- =================== Types (mock-ups) =================== -->
+        <record id="type_medication" model="egy.care.ticket.type">
+            <field name="name">Medication</field>
+            <field name="code">medication</field>
+            <field name="category">pharmacy</field>
+            <field name="sequence">0</field>
+        </record>
+        <record id="type_physiotherapy" model="egy.care.ticket.type">
+            <field name="name">Physiotherapy</field>
+            <field name="code">physiotherapy</field>
+            <field name="category">non_pharmacy</field>
+            <field name="sequence">6</field>
+        </record>
+        <record id="type_scan" model="egy.care.ticket.type">
+            <field name="name">Scan</field>
+            <field name="code">scan</field>
+            <field name="category">non_pharmacy</field>
+            <field name="sequence">7</field>
+        </record>
+        <record id="type_lab" model="egy.care.ticket.type">
+            <field name="name">Lab</field>
+            <field name="code">lab</field>
+            <field name="category">non_pharmacy</field>
+            <field name="sequence">8</field>
+        </record>
+    </data>
+</odoo>
